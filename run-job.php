@@ -2,152 +2,118 @@
 
 require __DIR__ . '/vendor/autoload.php';
 
-$app    = require_once __DIR__ . '/bootstrap/app.php';
+// Bootstrap Laravel to use config()
+$app = require_once __DIR__ . '/bootstrap/app.php';
 $kernel = $app->make(Illuminate\Contracts\Console\Kernel::class);
 $kernel->bootstrap();
 
 use Symfony\Component\Process\Process;
+use Illuminate\Support\Str;
 
 date_default_timezone_set('UTC');
 
-define('JOB_LOG',   storage_path('logs/background_jobs.log'));
-define('ERROR_LOG', storage_path('logs/background_jobs_errors.log'));
-define('QUEUE_FILE', storage_path('logs/job_queue.json'));
+// === Helper Logging Functions ===
 
-foreach ([dirname(JOB_LOG), dirname(QUEUE_FILE)] as $dir) {
-    if (! is_dir($dir)) {
-        mkdir($dir, 0777, true);
-    }
-}
-if (! file_exists(JOB_LOG))   file_put_contents(JOB_LOG, '');
-if (! file_exists(ERROR_LOG)) file_put_contents(ERROR_LOG, '');
-if (! file_exists(QUEUE_FILE)) file_put_contents(QUEUE_FILE, json_encode([], JSON_PRETTY_PRINT));
-
-
-function logJob(string $msg) {
-    file_put_contents(JOB_LOG,   '['.date('Y-m-d H:i:s')."] $msg\n", FILE_APPEND);
-}
-function logError(string $msg) {
-    file_put_contents(ERROR_LOG, '['.date('Y-m-d H:i:s')."] $msg\n", FILE_APPEND);
+function logJob($message) {
+    $logFile = storage_path('logs/background_jobs.log');
+    file_put_contents($logFile, "[" . date('Y-m-d H:i:s') . "] $message\n", FILE_APPEND);
 }
 
-function resolveJobClass(string $c): string {
-    return class_exists($c) ? $c : 'App\\Jobs\\' . $c;
+function logError($message) {
+    $logFile = storage_path('logs/background_jobs_errors.log');
+    file_put_contents($logFile, "[" . date('Y-m-d H:i:s') . "] $message\n", FILE_APPEND);
 }
 
 
-function runInBackground(string $class, string $method, array $params = []): void {
-    $class = resolveJobClass($class);
-    $php   = PHP_BINARY;
-    $script= __FILE__;
 
-    $esc = array_map('escapeshellarg', $params);
-    $cmd = array_merge([$php, $script, $class, $method], $esc);
+function isAllowedJob($class, $method) {
+    $allowed = config('background-jobs.allowed_jobs');
+    return isset($allowed[$class]) && in_array($method, $allowed[$class]);
+}
 
+
+
+function runInBackground($class, $method, $params = []) {
+    $cmd = array_merge(['php', base_path('run-job.php'), $class, $method], $params);
     $process = new Process($cmd);
     $process->start();
-
-    $pid = $process->getPid();
-    if ($pid) {
-        $runningFile = storage_path('logs/running_jobs.json');
-        $running = json_decode(file_get_contents($runningFile), true) ?: [];
-        $running[] = [
-            'pid'        => $pid,
-            'class'      => $class,
-            'method'     => $method,
-            'params'     => $params,
-            'started_at' => date('Y-m-d H:i:s')
-        ];
-        file_put_contents($runningFile, json_encode($running, JSON_PRETTY_PRINT));
-    }
 }
 
 
-function processQueue(): void {
-    $queue = json_decode(file_get_contents(QUEUE_FILE), true);
-    $now   = time();
-
-    
-    $due = array_filter($queue, fn($j) => $j['scheduled_at'] <= $now);
-    if (empty($due)) {
-        return;
-    }
-
-    usort($due, function($a, $b) {
-        if ($a['priority'] !== $b['priority']) {
-            return $b['priority'] <=> $a['priority'];
+function executeJob($class, $method, $params = [], $retryMap = [], $attempt = 1) {
+    try {
+        if (!class_exists($class)) {
+            throw new Exception("Class '$class' does not exist.");
         }
-        return $a['scheduled_at'] <=> $b['scheduled_at'];
-    });
 
-    // dispatch each due job in background
-    foreach ($due as $job) {
-        $class  = $job['class'];
-        $method = $job['method'];
-        $params = $job['params'] ?? [];
+        $instance = new $class();
 
-        logJob("DISPATCHING: $class::$method (priority {$job['priority']})");
-        runInBackground($class, $method, $params);
-    }
+        if (!method_exists($instance, $method)) {
+            throw new Exception("Method '$method' not found in class '$class'.");
+        }
 
-    // remove dispatched jobs from queue
-    $remaining = array_filter(
-        $queue,
-        fn($j) => $j['scheduled_at'] > $now
-    );
+        $reflection = new ReflectionMethod($class, $method);
+        $result = $reflection->invokeArgs($instance, $params);
 
-    file_put_contents(QUEUE_FILE, json_encode(array_values($remaining), JSON_PRETTY_PRINT));
-}
+        logJob("SUCCESS: $class::$method with params (" . implode(',', $params) . ")");
 
+      
+        if (is_array($result) && isset($result['chain'])) {
+            foreach ($result['chain'] as $job) {
+                $chainClass = $job['class'];
+                $chainMethod = $job['method'];
+                $chainParams = $job['params'] ?? [];
 
-if (php_sapi_name() === 'cli') {
-    global $argv;
-
-    //process queue first
-    if (isset($argv[1]) && $argv[1] === 'process-queue') {
-        processQueue();
-        exit;
-    }
-
-    // direct job execution
-    if (isset($argv[1], $argv[2])) {
-        $class  = resolveJobClass($argv[1]);
-        $method = $argv[2];
-        $params = array_slice($argv, 3);
-
-        logJob("RUNNING: $class::$method");
-
-        try {
-            if (! class_exists($class)) {
-                throw new Exception("Class $class not found");
-            }
-            $inst = new $class;
-            if (! method_exists($inst, $method)) {
-                throw new Exception("Method $method not found on $class");
-            }
-            call_user_func_array([$inst, $method], $params);
-            logJob("COMPLETED: $class::$method");
-
-            // chaining 
-            if ($result = $inst->$method(...$params)) {
-                if (is_array($result) && isset($result['chain'])) {
-                    foreach ($result['chain'] as $c) {
-                        $cc = $c['class'];
-                        runInBackground($cc, $c['method'], $c['params'] ?? []);
-                        logJob("CHAINED: $cc::{$c['method']} queued");
-                    }
+                if (isAllowedJob($chainClass, $chainMethod)) {
+                    runInBackground($chainClass, $chainMethod, $chainParams);
+                } else {
+                    logError("UNAUTHORIZED: $chainClass::$chainMethod");
                 }
             }
-        } catch (Throwable $e) {
-            $msg = "FAILED: $class::$method | ".get_class($e)." | ".$e->getMessage();
-            logJob($msg);
-            logError($msg."\n".$e->getTraceAsString());
         }
-        exit;
+
+    } catch (Throwable $e) {
+        $message = "FAILURE: $class::$method | " . get_class($e) . " | " . $e->getMessage();
+        logJob($message);
+        logError($message);
+
+     
+        $retryMap = array_merge([
+            RuntimeException::class => 3,
+            InvalidArgumentException::class => 2,
+            ArgumentCountError::class => 3,
+            TypeError::class => 2,
+        ], $retryMap);
+
+        foreach ($retryMap as $exceptionType => $maxAttempts) {
+            if ($e instanceof $exceptionType && $attempt < $maxAttempts) {
+                logJob("Retrying $class::$method (Attempt $attempt)");
+                sleep(2); // Delay before retry
+                executeJob($class, $method, $params, $retryMap, $attempt + 1);
+                return;
+            }
+        }
+    }
+}
+
+
+
+if (php_sapi_name() === 'cli' && isset($argv[1], $argv[2])) {
+    $classInput = trim($argv[1]);
+    $method = trim($argv[2]);
+    $params = array_slice($argv, 3);
+
+    $class = class_exists($classInput) ? $classInput : 'App\\Jobs\\' . $classInput;
+
+    if (!isAllowedJob($class, $method)) {
+        echo "Unauthorized job: $class::$method\n";
+        logError("UNAUTHORIZED: $class::$method");
+        exit(1);
     }
 
-    echo "Usage:\n"
-       . "  php run-job.php process-queue\n"
-       . "  php run-job.php ClassName methodName [param1 param2 ...]\n";
+    executeJob($class, $method, $params);
+
+} else {
+    echo "Usage: php run-job.php ClassName methodName param1 param2 ...\n";
     exit(1);
 }

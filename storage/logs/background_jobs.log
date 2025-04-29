@@ -1,0 +1,13 @@
+
+[2025-04-29 20:22:22] FAILURE: App\Jobs\SampleJob::handle | ArgumentCountError | Too few arguments to function App\Jobs\SampleJob::handle(), 1 passed and exactly 2 expected
+[2025-04-29 20:22:22] Retrying App\Jobs\SampleJob::handle (Attempt 1)
+[2025-04-29 20:22:24] FAILURE: App\Jobs\SampleJob::handle | ArgumentCountError | Too few arguments to function App\Jobs\SampleJob::handle(), 1 passed and exactly 2 expected
+[2025-04-29 20:22:24] Retrying App\Jobs\SampleJob::handle (Attempt 2)
+[2025-04-29 20:22:26] FAILURE: App\Jobs\SampleJob::handle | ArgumentCountError | Too few arguments to function App\Jobs\SampleJob::handle(), 1 passed and exactly 2 expected
+[2025-04-29 20:22:53] SUCCESS: App\Jobs\SampleJob::handle with params (1,param)
+[2025-04-29 20:46:38] SUCCESS: App\Jobs\SampleJob::handle with params (1,param)
+[2025-04-29 20:48:07] SUCCESS: App\Jobs\ChainedJob::handle with params (1,param)
+[2025-04-29 20:51:06] SUCCESS: App\Jobs\SampleJob::handle with params (1,param)
+[2025-04-29 20:58:23] SUCCESS: App\Jobs\SampleJob::handle with params (1,param)
+[2025-04-29 21:00:00] SUCCESS: App\Jobs\SampleJob::handle with params (1,param)
+[2025-04-29 21:00:00] SUCCESS: App\Jobs\ChainedJob::handle with params (next1,next2)

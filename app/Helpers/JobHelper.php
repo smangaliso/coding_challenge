@@ -1,37 +1,42 @@
 <?php
 
+use Illuminate\Container\Attributes\Log;
+use Symfony\Component\Process\Process;
+
 if (! function_exists('runBackgroundJob')) {
 
-    function runBackgroundJob(string $class, string $method, array $params= [], int $delay=0, int $priority=0) {
+    function runBackgroundJob(string $class, string $method, array $params = []): string
+    {
+        $jobId = uniqid('job_', true);
+
+      
         $php    = PHP_BINARY;
         $script = base_path('run-job.php');
-        $jobId  = uniqid('jq_', true);
+        $args   = array_merge([$class, $method], $params);
 
-        $queueFile = storage_path('logs/job_queue.json');
-        if (! file_exists(dirname($queueFile))) {
-            mkdir(dirname($queueFile), 0777, true);
-        }
-        $queue = file_exists($queueFile)
-              ? json_decode(file_get_contents($queueFile), true)
-              : [];
 
-        $queue[] = [
-            'job_id'       => $jobId,
-            'class'        => $class,
-            'method'       => $method,
-            'params'       => $params,
-            'scheduled_at' => time() + $delay,
-            'priority'     => $priority,
+       
+        $args   = array_map('escapeshellarg', $args);
+        $process = new Process(array_merge([$php, $script], $args));
+        $process->start();
+
+        $pidFile = storage_path('logs/running_jobs.json');
+        $running = file_exists($pidFile)
+            ? json_decode(file_get_contents($pidFile), true)
+            : [];
+
+        $running[] = [
+            'job_id'     => $jobId,
+            'pid'        => $process->getPid(),
+            'class'      => $class,
+            'method'     => $method,
+            'params'     => $params,
+            'script'     => $script,
+            'started_at' => date('Y-m-d H:i:s'),
         ];
 
-        file_put_contents($queueFile, json_encode($queue, JSON_PRETTY_PRINT));
+        file_put_contents($pidFile, json_encode($running, JSON_PRETTY_PRINT));
 
-        if (strtoupper(substr(PHP_OS, 0, 3)) === 'WIN') {
-            // Windows
-            pclose(popen("start /B cmd /c \"$php $script process-queue\"", 'r'));
-        } else {
-            // Unix / Mac
-            exec("$php $script process-queue > /dev/null 2>&1 &");
-        }
+        return $jobId;
     }
 }

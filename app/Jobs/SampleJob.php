@@ -17,7 +17,7 @@ class SampleJob {
 
         return [
             'chain' => [
-                ['class' => 'ChainedJob', 'method' => 'handle', 'params' => ['next1', 'next2']]
+                ['class' => 'App\\Jobs\\ChainedJob', 'method' => 'handle', 'params' => ['next1', 'next2']]
             ]
         ];
     }

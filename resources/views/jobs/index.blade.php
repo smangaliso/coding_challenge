@@ -32,62 +32,23 @@
 
     {{-- Launch New Job --}}
     <section>
-        <h2>Enqueue New Job</h2>
+        <h2>Launch New Job</h2>
         <form action="{{ route('jobs.launch') }}" method="POST">
             @csrf
             <label>
-              Class:
-              <input type="text" name="class" placeholder="SampleJob" required>
+                Class name:
+                <input type="text" name="class" placeholder="SampleJob" required>
             </label>
             <label>
-              Method:
-              <input type="text" name="method" placeholder="handle" required>
+                Method:
+                <input type="text" name="method" placeholder="handle" required>
             </label>
             <label>
-              Params (comma-separated):
-              <input type="text" name="params" placeholder="param1,param2">
+                Params (comma-separated):
+                <input type="text" name="params" placeholder="param1,param2">
             </label>
-            <label>
-              Delay (seconds):
-              <input type="number" name="delay" value="0" min="0">
-            </label>
-            <label>
-              Priority (higher runs first):
-              <input type="number" name="priority" value="0" min="0">
-            </label>
-            <button type="submit">Enqueue</button>
+            <button type="submit">Launch</button>
         </form>
-    </section>
-
-    {{-- Pending Queue --}}
-    <section>
-        <h2>Pending Queue</h2>
-        <table>
-            <thead>
-                <tr>
-                    <th>Job ID</th>
-                    <th>Class</th>
-                    <th>Method</th>
-                    <th>Params</th>
-                    <th>Scheduled At</th>
-                    <th>Priority</th>
-                </tr>
-            </thead>
-            <tbody>
-                @forelse($queue as $job)
-                    <tr>
-                        <td>{{ $job['job_id'] }}</td>
-                        <td>{{ $job['class'] }}</td>
-                        <td>{{ $job['method'] }}</td>
-                        <td>{{ implode(',', $job['params'] ?? []) }}</td>
-                        <td>{{ date('Y-m-d H:i:s', $job['scheduled_at']) }}</td>
-                        <td>{{ $job['priority'] }}</td>
-                    </tr>
-                @empty
-                    <tr><td colspan="6">No jobs in queue.</td></tr>
-                @endforelse
-            </tbody>
-        </table>
     </section>
 
     {{-- Running Jobs --}}
@@ -129,24 +90,30 @@
 
     {{-- Job Status Logs --}}
     <section>
-        <h2>Job Logs</h2>
+        <h2>Job Status Logs</h2>
         <table>
             <thead>
                 <tr>
                     <th>Timestamp</th>
                     <th>Message</th>
+                    <th>Retry Attempt</th>
                 </tr>
             </thead>
             <tbody>
                 @foreach($jobs as $line)
                     @php
+                        // parse the timestamp and message
                         preg_match('/\[(.*?)\]\s+(.*)/', $line, $m);
-                        $ts = $m[1] ?? '';
-                        $msg = $m[2] ?? $line;
+                        $timestamp = $m[1] ?? '';
+                        $message   = $m[2] ?? $line;
+                        // capture 'attempt X' if present
+                        preg_match('/attempt\s+(\d+)/i', $line, $r);
+                        $retry     = $r[1] ?? '';
                     @endphp
                     <tr>
-                        <td>{{ $ts }}</td>
-                        <td>{{ $msg }}</td>
+                        <td>{{ $timestamp }}</td>
+                        <td>{{ $message }}</td>
+                        <td>{{ $retry }}</td>
                     </tr>
                 @endforeach
             </tbody>

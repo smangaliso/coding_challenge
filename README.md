@@ -167,11 +167,16 @@ A global PHP helper function `runBackgroundJob($class, $method, $params = [])` e
 Currently, this helper is not demonstrated in this README because it will be **showcased through the Dashboard Interface**
 
 The dashboard will:
-- Display the job queue.
 - Show job statuses (running, completed, failed).
 - Show retry count per job.
 - Allow cancellation of running jobs.
 
 
+
+**To access the dashboard**
+
+```
+php artisan serve
+```
 
 

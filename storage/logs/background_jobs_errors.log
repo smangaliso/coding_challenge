@@ -1,0 +1,19 @@
+[2025-04-29 20:13:18] UNAUTHORIZED: App\Jobs\RandomJob::handle
+[2025-04-29 20:13:43] FAILURE: App\Jobs\SampleJob::handle | ArgumentCountError | Too few arguments to function App\Jobs\SampleJob::handle(), 1 passed and exactly 2 expected
+[2025-04-29 20:13:45] FAILURE: App\Jobs\SampleJob::handle | ArgumentCountError | Too few arguments to function App\Jobs\SampleJob::handle(), 1 passed and exactly 2 expected
+[2025-04-29 20:16:50] UNAUTHORIZED: ChainedJob::handle
+[2025-04-29 20:17:19] UNAUTHORIZED: App\Jobs\RandomJob::handle
+[2025-04-29 20:17:53] UNAUTHORIZED: App\Jobs\RandomJob::handle
+[2025-04-29 20:17:59] FAILURE: App\Jobs\SampleJob::handle | ArgumentCountError | Too few arguments to function App\Jobs\SampleJob::handle(), 1 passed and exactly 2 expected
+[2025-04-29 20:18:01] FAILURE: App\Jobs\SampleJob::handle | ArgumentCountError | Too few arguments to function App\Jobs\SampleJob::handle(), 1 passed and exactly 2 expected
+[2025-04-29 20:19:03] FAILURE: App\Jobs\SampleJob::handle | ArgumentCountError | Too few arguments to function App\Jobs\SampleJob::handle(), 1 passed and exactly 2 expected
+[2025-04-29 20:19:05] FAILURE: App\Jobs\SampleJob::handle | ArgumentCountError | Too few arguments to function App\Jobs\SampleJob::handle(), 1 passed and exactly 2 expected
+[2025-04-29 20:19:07] FAILURE: App\Jobs\SampleJob::handle | ArgumentCountError | Too few arguments to function App\Jobs\SampleJob::handle(), 1 passed and exactly 2 expected
+[2025-04-29 20:22:22] FAILURE: App\Jobs\SampleJob::handle | ArgumentCountError | Too few arguments to function App\Jobs\SampleJob::handle(), 1 passed and exactly 2 expected
+[2025-04-29 20:22:24] FAILURE: App\Jobs\SampleJob::handle | ArgumentCountError | Too few arguments to function App\Jobs\SampleJob::handle(), 1 passed and exactly 2 expected
+[2025-04-29 20:22:26] FAILURE: App\Jobs\SampleJob::handle | ArgumentCountError | Too few arguments to function App\Jobs\SampleJob::handle(), 1 passed and exactly 2 expected
+[2025-04-29 20:22:31] UNAUTHORIZED: App\Jobs\RandomJob::handle
+[2025-04-29 20:22:53] UNAUTHORIZED: ChainedJob::handle
+[2025-04-29 20:37:12] UNAUTHORIZED: App\Jobs\"SampleJob"::"handle"
+[2025-04-29 20:46:38] UNAUTHORIZED: ChainedJob::handle
+[2025-04-29 20:51:06] UNAUTHORIZED: ChainedJob::handle
